@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		compose.yaml = compose.yaml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Pulse", "Test.Pulse\Test.Pulse.csproj", "{11185FD6-CFAC-441D-B26B-99DC4AA56173}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,5 +19,9 @@ Global
 		{FCCCE7AD-674D-4DAD-BB25-C6E2C1615DEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FCCCE7AD-674D-4DAD-BB25-C6E2C1615DEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FCCCE7AD-674D-4DAD-BB25-C6E2C1615DEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11185FD6-CFAC-441D-B26B-99DC4AA56173}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11185FD6-CFAC-441D-B26B-99DC4AA56173}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11185FD6-CFAC-441D-B26B-99DC4AA56173}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11185FD6-CFAC-441D-B26B-99DC4AA56173}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
