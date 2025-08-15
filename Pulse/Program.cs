@@ -19,42 +19,25 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddMemoryCache();
 
-builder.Services.AddSingleton<IDateTimeService, SystemDateTimeService>();
-
-var cs = builder.Configuration.GetConnectionString("Postgres")
-         ?? throw new InvalidOperationException("Connection string 'Postgres' not found.");
-
-var dsb = new NpgsqlDataSourceBuilder(cs);
-dsb.MapEnum<PulseTaskStatus>("task_status");
-var dataSource = dsb.Build();
+var postgresOptions = builder.Configuration.GetSection("Postgres").Get<PostgresOptions>()
+                      ?? throw new InvalidOperationException("Postgres options not bound");
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(postgresOptions.BuildConnectionString());
+dataSourceBuilder.MapEnum<PulseTaskStatus>("task_status");
+var dataSource = dataSourceBuilder.Build();
 builder.Services.AddSingleton(dataSource);
 
+builder.Services.AddSingleton<IDateTimeService, SystemDateTimeService>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 
-builder.Services.AddHostedService<OverdueTasksWorker>(); // реализуй IHostedService/BackgroundService
+//builder.Services.AddHostedService<OverdueTasksWorker>();
 
 var app = builder.Build();
 
-// ---------- OpenAPI UI ----------
 app.MapOpenApi();
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwaggerUI(); // для AddOpenApi
-    // если используешь AddSwaggerGen(), тогда: app.UseSwagger(); app.UseSwaggerUI();
-}
+app.UseSwaggerUI();
 
-// ---------- Глобальные фильтры/конвейер (по желанию) ----------
-// app.UseHttpsRedirection();
-
-// ---------- Endpoints ----------
-app.MapGroup("/api")              // можно повесить общие фильтры/политики на группу
-   .WithTags("API")
-   .MapGroup("/tasks")            // либо вызываем вашу экстеншен-функцию
-   .WithTags("Tasks");
-
-// Если у тебя есть extension вида: public static RouteGroupBuilder GetEndpoints(this IEndpointRouteBuilder app)
-TasksEndpoints.GetEndpoints(app); // ← подключаем ваши task-эндпоинты (Create/List/Get/Update/Patch/Delete)
+app.GetEndpoints();
 
 // (Опционально) эндпоинт курсов валют, если реализован
 // app.MapGroup("/api/rates").MapGet("/", CurrencyHandlers.GetLatest);

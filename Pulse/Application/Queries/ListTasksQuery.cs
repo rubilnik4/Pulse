@@ -6,5 +6,5 @@ public sealed record ListTasksQuery(
     PulseTaskStatus? Status, 
     int Page, 
     int Size, 
-    PulseTaskSort Sort
+    PulseTaskSort? Sort
 );

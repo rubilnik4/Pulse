@@ -49,7 +49,7 @@ public sealed class TaskService(
         var size = query.Size > 0 
             ? Math.Min(query.Size, paginationOptions.Value.MaxSize) 
             : paginationOptions.Value.DefaultSize;
-        return repository.List(query.Status, page, size, query.Sort);
+        return repository.List(query.Status, page, size, query.Sort ?? paginationOptions.Value.DefaultSort);
     }
    
     public async Task<UnitResult<IAppError>> Update(UpdateTaskCommand command)
