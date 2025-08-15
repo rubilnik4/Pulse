@@ -25,10 +25,8 @@ public static class TaskMappings
     
     public static ListTasksQuery ToQuery(this PagingQuery query)
     {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var size = query.Size <= 0 ? 20 : Math.Min(query.Size, 100);
         var sortKey = query.Sort?.ToDomain() ?? PulseTaskSort.DueDateAsc;
-        return new ListTasksQuery(query.Status?.ToDomain(), page, size, sortKey);
+        return new ListTasksQuery(query.Status?.ToDomain(), query.Page, query.Size, sortKey);
     }
 
     public static TaskResponse ToResponse(this TaskItem taskItem) => new TaskResponse

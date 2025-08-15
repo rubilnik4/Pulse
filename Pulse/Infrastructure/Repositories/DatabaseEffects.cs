@@ -7,55 +7,58 @@ namespace Pulse.Infrastructure.Repositories;
 
 public static class DatabaseEffects
 {
-    public static async Task<Result<T, DbError>> Try<T>(
-        NpgsqlDataSource dataSource, Func<NpgsqlConnection, Task<T>> action)
+    public static async Task<Result<T, IAppError>> Try<T>(
+        NpgsqlDataSource dataSource, ILogger logger, Func<NpgsqlConnection, Task<T>> action, string operation)
     {
         try
         {
             await using var conn = await dataSource.OpenConnectionAsync();
             var value = await action(conn);
-            return Result.Success<T, DbError>(value);
+            return Result.Success<T, IAppError>(value);
         }
         catch (Exception ex)
         {
-            return Result.Failure<T, DbError>(DbError.From(ex));
+            logger.LogError(ex, "Database error during {Operation}: {Message}", operation, ex.Message);
+            return Result.Failure<T, IAppError>(DatabaseError.From(ex));
         }
     }
   
-    public static async Task<UnitResult<DbError>> TryAffecting(
-        NpgsqlDataSource dataSource, Func<NpgsqlConnection, Task<int>> exec,string operation)
+    public static async Task<UnitResult<IAppError>> TryAffecting(
+        NpgsqlDataSource dataSource, ILogger logger, Func<NpgsqlConnection, Task<int>> exec, string operation)
     {
         try
         {
             await using var conn = await dataSource.OpenConnectionAsync();
             var affected = await exec(conn);
             return affected > 0
-                ? UnitResult.Success<DbError>()
-                : UnitResult.Failure(DbError.NoRows(operation));
+                ? UnitResult.Success<IAppError>()
+                : UnitResult.Failure<IAppError>(DatabaseError.NoRows(operation));
         }
         catch (Exception ex)
         {
-            return UnitResult.Failure(DbError.From(ex));
+            logger.LogError(ex, "Database error during {Operation}: {Message}", operation, ex.Message);
+            return UnitResult.Failure<IAppError>(DatabaseError.From(ex));
         }
     }
    
-    public static async Task<Result<T, DbError>> TryAffecting<T>(
-        NpgsqlDataSource ds, Func<NpgsqlConnection, Task<int>> exec, Func<T> onSuccess, string operation)
+    public static async Task<Result<T, IAppError>> TryAffecting<T>(
+        NpgsqlDataSource ds, ILogger logger, Func<NpgsqlConnection, Task<int>> exec, Func<T> onSuccess, string operation)
     {
         try
         {
             await using var conn = await ds.OpenConnectionAsync();
             var affected = await exec(conn);
             return affected > 0
-                ? Result.Success<T, DbError>(onSuccess())
-                : Result.Failure<T, DbError>(DbError.NoRows(operation));
+                ? Result.Success<T, IAppError>(onSuccess())
+                : Result.Failure<T, IAppError>(DatabaseError.NoRows(operation));
         }
         catch (Exception ex)
         {
-            return Result.Failure<T, DbError>(DbError.From(ex));
+            logger.LogError(ex, "Database error during {Operation}: {Message}", operation, ex.Message);
+            return Result.Failure<T, IAppError>(DatabaseError.From(ex));
         }
     }
    
-    public static CommandDefinition Cmd(string sql, object? args = null)
-        => new(sql, args);
+    public static CommandDefinition Cmd(string sql, object? args = null) => 
+        new(sql, args);
 }

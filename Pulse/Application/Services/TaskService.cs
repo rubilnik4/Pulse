@@ -1,77 +1,95 @@
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Options;
 using Pulse.Application.Commands;
+using Pulse.Application.Options;
 using Pulse.Application.Pagination;
 using Pulse.Application.Queries;
 using Pulse.Domain.Models;
+using Pulse.Infrastructure.Errors;
 using Pulse.Infrastructure.Repositories;
 
 namespace Pulse.Application.Services;
 
 public sealed class TaskService(
     ITaskRepository repository, 
-    IDateTimeService dateTimeService) 
-    : ITaskService
+    IDateTimeService dateTimeService, 
+    IOptions<PaginationOptions> paginationOptions,
+    ILogger<ITaskService> logger): ITaskService
 {
-    public async Task<Result<TaskItem>> Create(CreateTaskCommand command)
+    public Task<Result<Guid, IAppError>> Create(CreateTaskCommand command)
     {
-        var taskItem = CreateTaskCommand.NewTask(command, dateTimeService.UtcNow());
-
-        var ok = await repository.Insert(taskItem);
-        return ok 
-            ? Result.Success(taskItem) 
-            : Result.Failure<TaskItem>("CreateFailed");
-    }
-   
-    public async Task<PageResult<TaskItem>> List(ListTasksQuery query)
-    {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var size = query.Size <= 0 ? 20 : Math.Min(query.Size, 100);
-        var offset = (page - 1) * size;
-       
-        var (items, total) = await repository.List(query.Status, offset, size, query.Sort);
-
-        return new PageResult<TaskItem>
-        (
-            Page: page,
-            Size: size,
-            Total: total,
-            Items: items
-        );
+        logger.LogInformation("Creating new task with title '{Title}'", command.Title);
+        
+        var taskItem = command.NewTask(dateTimeService.UtcNow());
+        return repository.Insert(taskItem);
     }
   
-    public Task<Maybe<TaskItem>> Get(Guid id) => 
-        repository.Get(id);
-   
-    public async Task<Result<TaskItem>> Update(UpdateTaskCommand command)
+    public async Task<Result<TaskItem, IAppError>> Get(Guid id)
     {
-        var currentItem = await repository.Get(command.Id);
-        if (currentItem.HasNoValue)
-            return Result.Failure<TaskItem>("NotFound");
-       
-        var updatedItem = UpdateTaskCommand.WithUpdate(command, currentItem.Value, dateTimeService.UtcNow());
+        logger.LogInformation("Getting task {TaskId}", id);
+        
+        var result = await repository.Get(id);
 
-        var ok = await repository.Update(updatedItem);
-        return ok 
-            ? Result.Success(updatedItem) 
-            : Result.Failure<TaskItem>("UpdateFailed");
+        if (result.IsFailure)
+            return Result.Failure<TaskItem, IAppError>(result.Error);
+
+        return result.Value.HasValue
+            ? Result.Success<TaskItem, IAppError>(result.Value.Value)
+            : Result.Failure<TaskItem, IAppError>(new NotFoundError(id.ToString(), "Get database task"));
     }
    
-    public async Task<Result> ChangeStatus(Guid id, PulseTaskStatus status)
+    public Task<Result<PageResult<TaskItem>, IAppError>> List(ListTasksQuery query)
     {
-        var current = await repository.Get(id);
-        if (current.HasNoValue)
-            return Result.Failure<TaskItem>("NotFound");
-  
-        var ok = await repository.UpdateStatus(id, status, dateTimeService.UtcNow());
-        if (!ok)
-            return Result.Failure<TaskItem>("UpdateFailed");
+        logger.LogInformation("Listing tasks, Status={Status}, Page={Page}, Size={Size}, Sort={Sort}",
+            query.Status, query.Page, query.Size, query.Sort);
+        
+        var page = query.Page > 0 
+            ? query.Page 
+            : paginationOptions.Value.DefaultPage;
+        var size = query.Size > 0 
+            ? Math.Min(query.Size, paginationOptions.Value.MaxSize) 
+            : paginationOptions.Value.DefaultSize;
+        return repository.List(query.Status, page, size, query.Sort);
+    }
+   
+    public async Task<UnitResult<IAppError>> Update(UpdateTaskCommand command)
+    {
+        logger.LogInformation("Updating task {TaskId}", command.Id);
+        
+        var currentResult = await repository.Get(command.Id);
+        if (currentResult.IsFailure)
+            return currentResult;
+        if (currentResult.Value.HasNoValue)
+            return Result.Failure<TaskItem, IAppError>(new NotFoundError(command.Id.ToString(), "Get database task"));
 
-        return Result.Success();
+        var currentTask = currentResult.Value.Value;
+        var updatedTask = command.WithUpdate(currentTask, dateTimeService.UtcNow());
+        return await repository.Update(updatedTask);
+    }
+   
+    public async Task<UnitResult<IAppError>> ChangeStatus(Guid id, PulseTaskStatus status)
+    {
+        logger.LogInformation("Changing status for task {TaskId} -> {Status}", id, status);
+        
+        var updateResult = await repository.UpdateStatus(id, status, dateTimeService.UtcNow());
+        if (updateResult.IsFailure)
+            return updateResult.Error.ErrorType == DatabaseError.NotFoundErrorType
+                ? UnitResult.Failure<IAppError>(new NotFoundError(id.ToString(), "Update status database task"))
+                : updateResult;
+
+        return updateResult;
     }
  
-    public async Task<Result> Delete(Guid id)
+    public async Task<UnitResult<IAppError>> Delete(Guid id)
     {
-        var ok = await repository.Delete(id);
-        return ok ? Result.Success() : Result.Failure("NotFound");
+        logger.LogInformation("Deleting task {TaskId}", id);
+        
+        var deletedResult = await repository.Delete(id);
+        if (deletedResult.IsFailure)
+            return deletedResult.Error.ErrorType == DatabaseError.NotFoundErrorType
+                ? UnitResult.Failure<IAppError>(new NotFoundError(id.ToString(), "Delete database task"))
+                : deletedResult;
+        
+        return deletedResult;
     }
 }

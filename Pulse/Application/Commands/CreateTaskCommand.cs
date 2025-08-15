@@ -3,12 +3,12 @@ using Pulse.Domain.Models;
 namespace Pulse.Application.Commands;
 
 public sealed record CreateTaskCommand(
-    string Title, 
-    string Description, 
+    string Title,
+    string Description,
     DateTime DueDateUtc
-)
-{
-    public static TaskItem NewTask(CreateTaskCommand command, DateTime nowUtc) => new(
+);
+public static class CreateTaskCommandMapper{
+    public static TaskItem NewTask(this CreateTaskCommand command, DateTime nowUtc) => new(
         Id: Guid.NewGuid(),
         Title: command.Title,
         Description: command.Description,
