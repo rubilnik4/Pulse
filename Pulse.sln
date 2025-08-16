@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pulse", "Pulse\Pulse.csproj", "{FCCCE7AD-674D-4DAD-BB25-C6E2C1615DEF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pulse", "src\Pulse\Pulse.csproj", "{FCCCE7AD-674D-4DAD-BB25-C6E2C1615DEF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4F4B94CA-862C-4CE7-A7A9-149A8F02E8EF}"
 	ProjectSection(SolutionItems) = preProject
 		compose.yaml = compose.yaml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Pulse", "Test.Pulse\Test.Pulse.csproj", "{11185FD6-CFAC-441D-B26B-99DC4AA56173}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Pulse", "test\Test.Pulse\Test.Pulse.csproj", "{11185FD6-CFAC-441D-B26B-99DC4AA56173}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
