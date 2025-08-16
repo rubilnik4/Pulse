@@ -1,8 +1,6 @@
-using Npgsql;
 using Pulse.Api.Endpoints;
 using Pulse.Application.Options;
 using Pulse.Application.Services;
-using Pulse.Domain.Models;
 using Pulse.Infrastructure.Database;
 using Pulse.Infrastructure.Repositories;
 using Pulse.Migrations;

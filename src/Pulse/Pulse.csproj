@@ -19,6 +19,7 @@
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
+      <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 
 </Project>

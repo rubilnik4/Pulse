@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Pulse.Api.Contracts;
+using Pulse.Api.Contracts.Requests;
 using Pulse.Api.Contracts.Responses;
 using Shouldly;
 using Test.Pulse.Integrations.Startup;
@@ -22,14 +23,9 @@ public sealed class TasksEndpointsTests
     {
         using var client  = _factory.CreateClient();
         var now = _factory.DateTimeService.UtcNow();
-        var create = new
-        {
-            Title = "Write integration tests",
-            Description = "Cover all routes",
-            DueDateUtc = now.AddHours(2)
-        };
-       
-        var createResponse = await client.PostAsJsonAsync("/api/tasks", create);
+
+        var createRequest = TaskCreateRequest(now);
+        var createResponse = await client.PostAsJsonAsync("/api/tasks", createRequest);
         var id = await createResponse.Content.ReadFromJsonAsync<Guid>();
       
         var get = await client.GetAsync($"/api/tasks/{id}");
@@ -37,9 +33,9 @@ public sealed class TasksEndpointsTests
         
         response.ShouldNotBeNull();
         response.Id.ShouldBe(id);
-        response.Title.ShouldBe(create.Title);
+        response.Title.ShouldBe(createRequest.Title);
         response.Status.ShouldBe(TaskStatusDto.New);
-        response.DueDateUtc.ShouldBe(create.DueDateUtc);
+        response.DueDateUtc.ShouldBe(createRequest.DueDateUtc);
     }
 
     // [Test]
@@ -101,4 +97,10 @@ public sealed class TasksEndpointsTests
     {
         await _factory.DisposeAsync();
     }
+    
+    private static CreateTaskRequest TaskCreateRequest(DateTime now) => new(
+        Title: "Write integration tests",
+        Description: "Cover all routes",
+        DueDateUtc: now.AddHours(2)
+    );
 }
