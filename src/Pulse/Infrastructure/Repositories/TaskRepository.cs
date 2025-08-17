@@ -174,11 +174,11 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
             WHERE  due_date_utc < @NowUtc
               AND  status IN ('{PulseTaskStatus.New.ToString()}','{PulseTaskStatus.InProgress.ToString()}');";
 
-        return DatabaseEffects.TryAffecting(
-            dataSource, logger,
+        return DatabaseEffects.RunWithLock(
+            dataSource, logger, RepositoryLocks.OverdueSweep,
             exec: conn => conn.ExecuteAsync(DatabaseEffects.Cmd(sql, new { NowUtc = nowUtc })),
             onSuccess: affected => affected,
-            operation: "MARK_OVERDUE"
-        );
+            onSkipped: () => 0,
+            operationName: "MARK_OVERDUE_WITH_LOCK");
     }
 }

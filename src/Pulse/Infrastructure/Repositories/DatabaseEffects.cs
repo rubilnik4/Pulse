@@ -58,6 +58,42 @@ public static class DatabaseEffects
             return Result.Failure<T, IAppError>(DatabaseError.From(ex));
         }
     }
+    
+    public static async Task<Result<T, IAppError>> RunWithLock<T>(
+        NpgsqlDataSource ds, ILogger logger, long lockKey,
+        Func<NpgsqlConnection, Task<int>> exec, Func<int, T> onSuccess, Func<T> onSkipped,
+        string operationName)
+    {
+        try
+        {
+            await using var conn = await ds.OpenConnectionAsync();
+            
+            var gotLock = await conn.ExecuteScalarAsync<bool>(
+                new CommandDefinition("SELECT pg_try_advisory_lock(@k);", new { k = lockKey }));
+
+            if (!gotLock)
+            {
+                logger.LogInformation("{Operation}: lock busy (key={Key}), skipping.", operationName, lockKey);
+                return Result.Success<T, IAppError>(onSkipped());
+            }
+
+            try
+            {
+                var affected = await exec(conn);
+                return Result.Success<T, IAppError>(onSuccess(affected));
+            }
+            finally
+            {
+                await conn.ExecuteAsync(
+                    new CommandDefinition("SELECT pg_advisory_unlock(@k);", new { k = lockKey }));
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "{Operation}: lock runner failed: {Message}", operationName, ex.Message);
+            return Result.Failure<T, IAppError>(DatabaseError.From(ex));
+        }
+    }
    
     public static CommandDefinition Cmd(string sql, object? args = null) => 
         new(sql, args);
