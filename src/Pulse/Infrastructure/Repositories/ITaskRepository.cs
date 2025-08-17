@@ -13,4 +13,5 @@ public interface ITaskRepository
     Task<UnitResult<IAppError>> Update(TaskItem entity);
     Task<UnitResult<IAppError>> UpdateStatus(Guid id, PulseTaskStatus status, DateTime updatedAtUtc);
     Task<UnitResult<IAppError>> Delete(Guid id);
+    Task<Result<int, IAppError>> MarkOverdue(DateTime nowUtc);
 }

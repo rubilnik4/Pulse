@@ -29,7 +29,7 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
                 CreatedAtUtc = taskItem.CreatedAtUtc,
                 UpdatedAtUtc = taskItem.UpdatedAtUtc
             })),
-            onSuccess: () => taskItem.Id,
+            onSuccess: _ => taskItem.Id,
             operation: "INSERT"
         );
     }
@@ -129,11 +129,6 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
         );
     }
 
-    public Task<UnitResult<DatabaseError>> UpdateStatus(Guid id, TaskStatus status, DateTime updatedAtUtc)
-    {
-        throw new NotImplementedException();
-    }
-
     public Task<UnitResult<IAppError>> UpdateStatus(Guid id, PulseTaskStatus status, DateTime updatedAtUtc)
     {
         logger.LogDebug("Updating status to database TaskId={TaskId}, Status={Status}", id, status);
@@ -166,6 +161,24 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
             dataSource, logger,
             exec: conn => conn.ExecuteAsync(DatabaseEffects.Cmd(sql, new { Id = id })),
             operation: "DELETE"
+        );
+    }
+    
+    public Task<Result<int, IAppError>> MarkOverdue(DateTime nowUtc)
+    {
+        logger.LogDebug("MarkOverdue: marking overdue tasks at {NowUtc}", nowUtc);
+        var sql = $@"
+            UPDATE tasks
+            SET    status = '{PulseTaskStatus.Overdue.ToString()}',
+                   updated_at_utc = @NowUtc
+            WHERE  due_date_utc < @NowUtc
+              AND  status IN ('{PulseTaskStatus.New.ToString()}','{PulseTaskStatus.InProgress.ToString()}');";
+
+        return DatabaseEffects.TryAffecting(
+            dataSource, logger,
+            exec: conn => conn.ExecuteAsync(DatabaseEffects.Cmd(sql, new { NowUtc = nowUtc })),
+            onSuccess: affected => affected,
+            operation: "MARK_OVERDUE"
         );
     }
 }

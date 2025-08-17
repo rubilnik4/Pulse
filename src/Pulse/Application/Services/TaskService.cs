@@ -92,4 +92,18 @@ public sealed class TaskService(
         
         return deletedResult;
     }
+    
+    public async Task<Result<int, IAppError>> MarkOverdue()
+    {
+        var nowUtc = dateTimeService.UtcNow();
+        logger.LogInformation("MarkOverdue sweep started at {NowUtc}", nowUtc);
+        
+        var result = await repository.MarkOverdue(nowUtc);
+        if (result.IsSuccess)
+            logger.LogInformation("MarkOverdue sweep done. Affected={Count}", result.Value);
+        else
+            logger.LogWarning("MarkOverdue sweep failed: {ErrorType} {Message}", result.Error.ErrorType, result.Error.Message);
+
+        return result;
+    }
 }

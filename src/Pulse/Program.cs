@@ -4,6 +4,7 @@ using Pulse.Application.Services;
 using Pulse.Infrastructure.Database;
 using Pulse.Infrastructure.Repositories;
 using Pulse.Infrastructure.Telemetry;
+using Pulse.Infrastructure.Workers;
 using Pulse.Migrations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,7 +33,7 @@ builder.Services.AddSingleton<IDateTimeService, SystemDateTimeService>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 
-//builder.Services.AddHostedService<OverdueTasksWorker>();
+builder.Services.AddHostedService<OverdueTasksWorker>();
 
 var app = builder.Build();
 

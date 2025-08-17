@@ -15,4 +15,5 @@ public interface ITaskService
     Task<UnitResult<IAppError>> Update(UpdateTaskCommand command);
     Task<UnitResult<IAppError>> ChangeStatus(Guid id, PulseTaskStatus status);
     Task<UnitResult<IAppError>> Delete(Guid id);
+    Task<Result<int, IAppError>> MarkOverdue();
 }

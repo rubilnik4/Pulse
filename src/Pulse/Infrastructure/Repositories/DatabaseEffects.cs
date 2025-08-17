@@ -42,14 +42,14 @@ public static class DatabaseEffects
     }
    
     public static async Task<Result<T, IAppError>> TryAffecting<T>(
-        NpgsqlDataSource ds, ILogger logger, Func<NpgsqlConnection, Task<int>> exec, Func<T> onSuccess, string operation)
+        NpgsqlDataSource ds, ILogger logger, Func<NpgsqlConnection, Task<int>> exec, Func<int, T> onSuccess, string operation)
     {
         try
         {
             await using var conn = await ds.OpenConnectionAsync();
             var affected = await exec(conn);
             return affected > 0
-                ? Result.Success<T, IAppError>(onSuccess())
+                ? Result.Success<T, IAppError>(onSuccess(affected))
                 : Result.Failure<T, IAppError>(DatabaseError.NoRows(operation));
         }
         catch (Exception ex)
