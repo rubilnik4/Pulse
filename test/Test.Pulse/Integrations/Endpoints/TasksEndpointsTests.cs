@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Pulse.Api.Contracts;
 using Pulse.Api.Contracts.Requests;
@@ -26,6 +27,7 @@ public sealed class TasksEndpointsTests
 
         var createRequest = TaskCreateRequest(now);
         var createResponse = await client.PostAsJsonAsync("/api/tasks", createRequest);
+        createResponse.IsSuccessStatusCode.ShouldBeTrue();
         var id = await createResponse.Content.ReadFromJsonAsync<Guid>();
       
         var get = await client.GetAsync($"/api/tasks/{id}");
@@ -38,59 +40,93 @@ public sealed class TasksEndpointsTests
         response.DueDateUtc.ShouldBe(createRequest.DueDateUtc);
     }
 
-    // [Test]
-    // public async Task List_Should_Return_Page_With_Items()
-    // {
-    //     using var factory = CreateFactory();
-    //     using var client  = factory.CreateClient();
-    //
-    //     for (var i = 0; i < 3; i++)
-    //     {
-    //         var req = new { Title = $"T{i}", Description = $"D{i}", DueDateUtc = DateTime.UtcNow.AddHours(1 + i) };
-    //         var r = await client.PostAsJsonAsync("/api/tasks", req);
-    //         r.EnsureSuccessStatusCode();
-    //     }
-    //
-    //     var list = await client.GetAsync("/api/tasks?page=1&size=10");
-    //     list.StatusCode.Should().Be(HttpStatusCode.OK);
-    //
-    //     var page = await list.Content.ReadFromJsonAsync<PagedResponse<TaskResponse>>();
-    //     page.Should().NotBeNull();
-    //     page!.Items.Should().NotBeEmpty();
-    //     page.Total.Should().BeGreaterOrEqualTo(3);
-    // }
-    //
-    // [Test]
-    // public async Task Update_ChangeStatus_Delete_Flow()
-    // {
-    //     using var factory = CreateFactory();
-    //     using var client  = factory.CreateClient();
-    //
-    //     var create = await client.PostAsJsonAsync("/api/tasks", new {
-    //         Title = "Flow",
-    //         Description = "Update → Status → Delete",
-    //         DueDateUtc = DateTime.UtcNow.AddHours(3)
-    //     });
-    //     var id = await create.Content.ReadFromJsonAsync<Guid>();
-    //
-    //     var update = await client.PutAsJsonAsync($"/api/tasks/{id}", new {
-    //         Title = "Flow (updated)",
-    //         Description = "Updated",
-    //         DueDateUtc = DateTime.UtcNow.AddHours(4)
-    //     });
-    //     update.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    //
-    //     var patch = await client.PatchAsJsonAsync($"/api/tasks/{id}/status", new {
-    //         Status = "Completed"
-    //     });
-    //     patch.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    //
-    //     var del = await client.DeleteAsync($"/api/tasks/{id}");
-    //     del.StatusCode.Should().Be(HttpStatusCode.NoContent);
-    //
-    //     var get = await client.GetAsync($"/api/tasks/{id}");
-    //     get.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    // }
+    [Test]
+    public async Task List_Should_Return_Page_With_Items()
+    {
+        using var client = _factory.CreateClient();
+        var now = _factory.DateTimeService.UtcNow();
+        
+        const int maxItems = 3;
+        for (var i = 0; i < maxItems; i++)
+        {
+            var request = TaskCreateRequest(now);
+            var response = await client.PostAsJsonAsync("/api/tasks", request);
+            response.IsSuccessStatusCode.ShouldBeTrue();
+        }
+    
+        var list = await client.GetAsync("/api/tasks?page=1&size=10");
+        list.StatusCode.ShouldBe(HttpStatusCode.OK);
+    
+        var page = await list.Content.ReadFromJsonAsync<PagedResponse<TaskResponse>>();
+        page.ShouldNotBeNull();
+        page.Items.ShouldNotBeEmpty();
+        page.Total.ShouldBeGreaterThanOrEqualTo(maxItems);
+    }
+    
+    [Test]
+    public async Task Update_Then_ChangeStatus_Should_Succeed()
+    {
+        using var client = _factory.CreateClient();
+        var now = _factory.DateTimeService.UtcNow();
+        
+        var createRequest = TaskCreateRequest(now);
+        var createResponse = await client.PostAsJsonAsync("/api/tasks", createRequest);
+        createResponse.IsSuccessStatusCode.ShouldBeTrue();
+        var id = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        id.ShouldNotBe(Guid.Empty);
+        
+        var updateDueDate = now.AddHours(4);
+        var updateRequest = TaskUpdateRequest(updateDueDate);
+        var updateResponse = await client.PutAsJsonAsync($"/api/tasks/{id}", updateRequest);
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var get = await client.GetAsync($"/api/tasks/{id}");
+        var response = await get.Content.ReadFromJsonAsync<TaskResponse>();
+        response.ShouldNotBeNull();
+        response.Status.ShouldBe(updateRequest.Status);
+        response.DueDateUtc.ShouldBe(updateRequest.DueDateUtc);
+    }
+    
+    [Test]
+    public async Task Patch_Then_ChangeStatus_Should_Succeed()
+    {
+        using var client = _factory.CreateClient();
+        var now = _factory.DateTimeService.UtcNow();
+        
+        var createRequest = TaskCreateRequest(now);
+        var createResponse = await client.PostAsJsonAsync("/api/tasks", createRequest);
+        createResponse.IsSuccessStatusCode.ShouldBeTrue();
+        var id = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        id.ShouldNotBe(Guid.Empty);
+        
+        var patchRequest = TaskUpdateStatusRequest();
+        var patchResponse = await client.PatchAsJsonAsync($"/api/tasks/{id}/status", patchRequest);
+        patchResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var get = await client.GetAsync($"/api/tasks/{id}");
+        var response = await get.Content.ReadFromJsonAsync<TaskResponse>();
+        response.ShouldNotBeNull();
+        response.Status.ShouldBe(patchRequest.Status);
+    }
+
+    [Test]
+    public async Task Delete_Should_Remove_Task()
+    {
+        using var client = _factory.CreateClient();
+        var now = _factory.DateTimeService.UtcNow();
+
+        var createRequest = TaskCreateRequest(now);
+        var createResponse = await client.PostAsJsonAsync("/api/tasks", createRequest);
+        createResponse.IsSuccessStatusCode.ShouldBeTrue();
+        var id = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        id.ShouldNotBe(Guid.Empty);
+       
+        var deleteResponse = await client.DeleteAsync($"/api/tasks/{id}");
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        
+        var getResponse = await client.GetAsync($"/api/tasks/{id}");
+        getResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
     
     [OneTimeTearDown]
     public async Task OneTimeTearDown()
@@ -99,8 +135,19 @@ public sealed class TasksEndpointsTests
     }
     
     private static CreateTaskRequest TaskCreateRequest(DateTime now) => new(
-        Title: "Write integration tests",
+        Title: "Write integration tests create",
         Description: "Cover all routes",
         DueDateUtc: now.AddHours(2)
+    );
+    
+    private static UpdateTaskRequest TaskUpdateRequest(DateTimeOffset dueDateUtc) => new(
+        Title: "Write integration tests update",
+        Description: "Cover all routes",
+        DueDateUtc: dueDateUtc,
+        Status: TaskStatusDto.InProgress
+    );
+    
+    private static UpdateTaskStatusRequest TaskUpdateStatusRequest() => new(
+        Status: TaskStatusDto.InProgress
     );
 }

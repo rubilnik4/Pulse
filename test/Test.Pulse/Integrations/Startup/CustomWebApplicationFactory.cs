@@ -57,8 +57,8 @@ public sealed class CustomWebApplicationFactory() : WebApplicationFactory<Progra
     
     public static async Task<CustomWebApplicationFactory> StartNewAsync()
     {
-        var f = new CustomWebApplicationFactory();
-        await f.StartAsync();
-        return f;
+        var factory = new CustomWebApplicationFactory();
+        await factory.StartAsync();
+        return factory;
     }
 }

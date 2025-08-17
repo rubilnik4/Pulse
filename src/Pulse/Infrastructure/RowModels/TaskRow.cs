@@ -8,7 +8,7 @@ public sealed record TaskRow(
     string Title,
     string Description,
     DateTime DueDateUtc,
-    PulseTaskStatus Status,
+    string Status,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc
 );
@@ -19,7 +19,7 @@ public static class TaskRowMapper {
         Title: row.Title,
         Description: row.Description,
         DueDateUtc: row.DueDateUtc,
-        Status: row.Status,
+        Status: Enum.Parse<PulseTaskStatus>(row.Status, ignoreCase: true),
         CreatedAtUtc: row.CreatedAtUtc,
         UpdatedAtUtc: row.UpdatedAtUtc
     );

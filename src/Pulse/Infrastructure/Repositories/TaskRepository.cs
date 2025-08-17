@@ -1,3 +1,4 @@
+using System.Data;
 using CSharpFunctionalExtensions;
 using Dapper;
 using Npgsql;
@@ -24,7 +25,7 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
                 Title = taskItem.Title,
                 Description = taskItem.Description ,
                 DueDateUtc = taskItem.DueDateUtc,
-                Status = taskItem.Status,
+                Status = taskItem.Status.ToString(),
                 CreatedAtUtc = taskItem.CreatedAtUtc,
                 UpdatedAtUtc = taskItem.UpdatedAtUtc
             })),
@@ -66,24 +67,24 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
             PulseTaskSort.CreatedAtDesc => "created_at_utc DESC",
             _ => "due_date_utc ASC"
         };
-
-        var sql = $@"
-            WITH filtered AS (
-                SELECT id, title, description, due_date_utc, status, created_at_utc, updated_at_utc
-                FROM tasks
-                WHERE (@Status IS NULL OR status = @Status)
-            )
-            SELECT COUNT(*) FROM filtered;
-
+        
+        var where = status is null ? "" : "WHERE status = @Status";
+        
+        var sql = $@"            
+            SELECT COUNT(*)
+            FROM tasks
+            {where};
+           
             SELECT
-              id AS ""Id"",
-              title AS ""Title"",
-              description AS ""Description"",
-              due_date_utc AS ""DueDateUtc"",
-              status AS ""Status"",
-              created_at_utc AS ""CreatedAtUtc"",
-              updated_at_utc AS ""UpdatedAtUtc""
-            FROM filtered
+              id               AS ""Id"",
+              title            AS ""Title"",
+              description      AS ""Description"",
+              due_date_utc     AS ""DueDateUtc"",
+              status           AS ""Status"",
+              created_at_utc   AS ""CreatedAtUtc"",
+              updated_at_utc   AS ""UpdatedAtUtc""
+            FROM tasks
+            {where}
             ORDER BY {orderBy}
             LIMIT @Limit OFFSET @Offset;";
 
@@ -92,14 +93,14 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
             var offset = (page - 1) * size;
             await using var grid = await conn.QueryMultipleAsync(DatabaseEffects.Cmd(sql, new
             {
-                Status = status, Limit = size, Offset = offset
+                Status = status.ToString(), Limit = size, Offset = offset
             }));
 
             var total = await grid.ReadSingleAsync<long>();
             var rows  = await grid.ReadAsync<TaskRow>();
             return rows.ToPage(page, size, total);
         },
-        operation: "GET");
+        operation: "LIST");
     }
 
     public Task<UnitResult<IAppError>> Update(TaskItem taskItem)
@@ -121,7 +122,7 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
                 Title = taskItem.Title,
                 Description = taskItem.Description,
                 DueDateUtc = taskItem.DueDateUtc,
-                Status = taskItem.Status,
+                Status = taskItem.Status.ToString(),
                 UpdatedAtUtc = taskItem.UpdatedAtUtc
             })),
             operation: "UPDATE"
@@ -148,7 +149,7 @@ public class TaskRepository(NpgsqlDataSource dataSource, ILogger<ITaskRepository
                 DatabaseEffects.Cmd(sql, new
                 {
                     Id = id,
-                    Status = status,                
+                    Status = status.ToString(),                
                     UpdatedAtUtc = updatedAtUtc
                 })),
             operation: "UPDATE_STATUS"

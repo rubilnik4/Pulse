@@ -3,10 +3,11 @@ using Pulse.Application.Options;
 using Pulse.Application.Services;
 using Pulse.Infrastructure.Database;
 using Pulse.Infrastructure.Repositories;
+using Pulse.Infrastructure.Telemetry;
 using Pulse.Migrations;
 
 var builder = WebApplication.CreateBuilder(args);
-
+    
 builder.Services
     .AddOptions<PaginationOptions>()
     .Bind(builder.Configuration.GetSection("Pagination"))
@@ -16,6 +17,8 @@ builder.Services
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+
+builder.AddTelemetry();
 
 builder.Services.AddMemoryCache();
 

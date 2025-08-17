@@ -29,14 +29,14 @@ public static class TasksEndpoints
 
         group.MapPut("/{id:guid}", TaskHandlers.Update)
             .AddEndpointFilter(new ValidateRequest<UpdateTaskRequest>())
-            .Produces<TaskResponse>()
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status404NotFound)
             .WithName("UpdateTask");
 
         group.MapPatch("/{id:guid}/status", TaskHandlers.ChangeStatus)
             .AddEndpointFilter(new ValidateRequest<UpdateTaskStatusRequest>())
-            .Produces<TaskResponse>()
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status404NotFound)
             .WithName("ChangeTaskStatus");

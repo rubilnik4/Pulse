@@ -1,7 +1,0 @@
-﻿services:
-  pulse:
-    image: pulse
-    build:
-      context: .
-      dockerfile: Pulse/Dockerfile
-
