@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddOptions();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
 
 builder.AddTelemetry();
 
@@ -47,7 +47,7 @@ using (var scope = app.Services.CreateScope())
     await migrator.RunAsync();
 }
 
-app.MapOpenApi();
+app.UseSwagger();
 app.UseSwaggerUI();
 
 app.GetTasksEndpoints();
