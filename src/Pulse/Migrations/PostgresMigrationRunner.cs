@@ -16,19 +16,18 @@ public sealed class PostgresMigrationRunner(NpgsqlDataSource ds, ILogger<IMigrat
        
         log.LogInformation("Checking migration table");
         const string ensureSql = @"
-            CREATE TABLE IF NOT EXISTS app_migrations
-            (
-                version     integer      NOT NULL,
-                name        text         NOT NULL,
-                checksum    text         NOT NULL,
-                applied_at  timestamptz  NOT NULL DEFAULT now(),
-                CONSTRAINT pk_app_migrations PRIMARY KEY (version)
-            );";
+        CREATE TABLE IF NOT EXISTS app_migrations
+        (
+            version     integer      NOT NULL,
+            name        text         NOT NULL,
+            applied_at  timestamptz  NOT NULL DEFAULT now(),
+            CONSTRAINT pk_app_migrations PRIMARY KEY (version)
+        );";
         await conn.ExecuteAsync(new CommandDefinition(ensureSql));
         
-        var applied = (await conn.QueryAsync<(int version, string checksum)>(
-            new CommandDefinition("SELECT version, checksum FROM app_migrations ORDER BY version")))
-            .ToDictionary(x => x.version, x => x.checksum);
+        var applied = (await conn.QueryAsync<(int version, string name)>(
+                "SELECT version, name FROM app_migrations ORDER BY version"))
+            .ToDictionary(x => x.version, x => x.name);
         
         var resourcePrefix = typeof(PostgresMigrationRunner).Namespace + ".";
         var resources = _assembly
@@ -56,14 +55,12 @@ public sealed class PostgresMigrationRunner(NpgsqlDataSource ds, ILogger<IMigrat
                                      ?? throw new InvalidOperationException($"Migration resource not found: {migration.ResourceName}");
             using var reader = new StreamReader(stream, Encoding.UTF8);
             var sql = await reader.ReadToEndAsync();
-            var checksum = Sha256(sql);
 
             if (applied.TryGetValue(migration.Version, out var existing))
             {
-                if (!string.Equals(existing, checksum, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(existing, migration.File, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException(
-                        $"Checksum mismatch for migration {migration.Version} ({migration.File}). " +
-                        $"Expected {existing}, got {checksum}.");
+                        $"Name mismatch for migration {migration.Version}. Expected {existing}, got {migration.File}.");
                 log.LogDebug("Migration {Version} already applied, skip", migration.Version);
                 continue;
             }
@@ -75,9 +72,9 @@ public sealed class PostgresMigrationRunner(NpgsqlDataSource ds, ILogger<IMigrat
             {
                 await conn.ExecuteAsync(new CommandDefinition(sql, transaction: transaction));
 
-                const string ins = @"INSERT INTO app_migrations(version, name, checksum) VALUES (@v, @n, @c);";
-                await conn.ExecuteAsync(new CommandDefinition(ins, new { v = migration.Version, n = migration.File, c = checksum },
-                    transaction: transaction));
+                const string ins = @"INSERT INTO app_migrations(version, name) VALUES (@v, @n);";
+                await conn.ExecuteAsync(new CommandDefinition(ins,
+                    new { v = migration.Version, n = migration.File }, transaction: transaction));
 
                 await transaction.CommitAsync();
                 log.LogInformation("Migration {Version} applied", migration.Version);
@@ -88,12 +85,5 @@ public sealed class PostgresMigrationRunner(NpgsqlDataSource ds, ILogger<IMigrat
                 throw;
             }
         }
-    }
-
-    private static string Sha256(string text)
-    {
-        var bytes = Encoding.UTF8.GetBytes(text);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash);
     }
 }
