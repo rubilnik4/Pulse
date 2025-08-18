@@ -21,10 +21,10 @@ public static class TelemetryFactory
             options.IncludeScopes = true;
             options.IncludeFormattedMessage = true;
             options.ParseStateValues = true;
+            options.SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName));
             options.AddOtlpExporter(o =>
             {
                 o.Endpoint = new Uri(otlpEndpoint);
-                o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
             });
         });
 
@@ -37,7 +37,6 @@ public static class TelemetryFactory
                 .AddOtlpExporter(o =>
                 {
                     o.Endpoint = new Uri(otlpEndpoint);
-                    o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
                 })
             )
             .WithMetrics(m => m
@@ -46,7 +45,6 @@ public static class TelemetryFactory
                 .AddOtlpExporter(o =>
                 {
                     o.Endpoint = new Uri(otlpEndpoint);
-                    o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
                 }));
 
         return builder;

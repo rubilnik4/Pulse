@@ -4,7 +4,7 @@ services:
   app:
     container_name: pulse-app
     build:
-      context: .
+      context: ../src/Pulse
       dockerfile: Dockerfile
     depends_on:
       - postgres
@@ -12,17 +12,14 @@ services:
     ports:
       - "8080:8080"
       - "9464:9464"
-    environment:
-      POSTGRES_HOST: pulse-postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://pulse-otel-collector:4317
-      LOG_LEVEL: DEBUG
-      PROMETHEUS_PORT: 9464
-    volumes:
-      - .:/app
+    environment:      
+      Postgres__Host: pulse-postgres 
+      Postgres__Port: "5432"
+      Postgres__Database: postgres
+      Postgres__Username: postgres
+      Postgres__Password: postgres 
+      OpenTelemetry__Endpoint: http://pulse-otel-collector:4317
+      OpenTelemetry__ServiceName: pulse
 
   postgres:
     container_name: pulse-postgres
