@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Options;
 using Pulse.Api.Endpoints;
 using Pulse.Application.Options;
 using Pulse.Application.Services;
+using Pulse.Application.Services.Cbr;
 using Pulse.Infrastructure.Database;
 using Pulse.Infrastructure.Repositories;
 using Pulse.Infrastructure.Telemetry;
@@ -8,13 +10,8 @@ using Pulse.Infrastructure.Workers;
 using Pulse.Migrations;
 
 var builder = WebApplication.CreateBuilder(args);
-    
-builder.Services
-    .AddOptions<PaginationOptions>()
-    .Bind(builder.Configuration.GetSection("Pagination"))
-    .ValidateDataAnnotations()
-    .Validate(o => o.DefaultSize <= o.MaxSize, "DefaultSize must be <= MaxSize")
-    .ValidateOnStart();
+
+builder.AddOptions();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -30,8 +27,15 @@ builder.Services.AddSingleton<IMigrationRunner, PostgresMigrationRunner>();
 builder.Services.AddSingleton(dataSource);
 
 builder.Services.AddSingleton<IDateTimeService, SystemDateTimeService>();
+builder.Services.AddSingleton<IRateService, RateService>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+
+builder.Services.AddHttpClient<ICbrClient, CbrClient>((sp, http) =>
+{
+    var opt = sp.GetRequiredService<IOptions<CbrOptions>>().Value;
+    http.BaseAddress = new Uri(opt.BaseUrl);
+});
 
 builder.Services.AddHostedService<OverdueTasksWorker>();
 
@@ -46,10 +50,8 @@ using (var scope = app.Services.CreateScope())
 app.MapOpenApi();
 app.UseSwaggerUI();
 
-app.GetEndpoints();
-
-// (Опционально) эндпоинт курсов валют, если реализован
-// app.MapGroup("/api/rates").MapGet("/", CurrencyHandlers.GetLatest);
+app.GetTasksEndpoints();
+app.GetRatesEndpoints();
 
 app.Run();
 

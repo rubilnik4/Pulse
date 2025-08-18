@@ -34,7 +34,7 @@ public static class ErrorResult
         {
             Title = ext.ErrorType,
             Detail = ext.Message,
-            Status = StatusCodes.Status502BadGateway
+            Status = StatusCodes.Status503ServiceUnavailable 
         }),
        
         _ => Results.Problem(new ProblemDetails

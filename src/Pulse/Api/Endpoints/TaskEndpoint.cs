@@ -6,7 +6,7 @@ namespace Pulse.Api.Endpoints;
 
 public static class TasksEndpoints
 {
-    public static RouteGroupBuilder GetEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder GetTasksEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app
             .MapGroup("/api/tasks")

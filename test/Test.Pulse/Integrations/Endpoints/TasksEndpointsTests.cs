@@ -22,7 +22,7 @@ public sealed class TasksEndpointsTests
     [Test]
     public async Task Create_Then_Get_Should_Return_Created_And_Entity()
     {
-        using var client  = _factory.CreateClient();
+        using var client = _factory.CreateClient();
         var now = _factory.DateTimeService.UtcNow();
 
         var createRequest = TaskCreateRequest(now);
