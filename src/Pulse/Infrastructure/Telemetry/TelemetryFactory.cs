@@ -10,6 +10,10 @@ public static class TelemetryFactory
 {
     public static WebApplicationBuilder AddTelemetry(this WebApplicationBuilder builder)
     {
+        var config = builder.Configuration.GetSection("OpenTelemetry");
+        var otlpEndpoint = config.GetValue<string>("Endpoint") ?? throw new Exception("OpenTelemetry endpoint not found");
+        var serviceName = config.GetValue<string>("ServiceName") ?? throw new Exception("OpenTelemetry service not found");
+        
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
         builder.Logging.AddOpenTelemetry(options =>
@@ -17,50 +21,34 @@ public static class TelemetryFactory
             options.IncludeScopes = true;
             options.IncludeFormattedMessage = true;
             options.ParseStateValues = true;
-            //options.AddConsoleExporter();
+            options.AddOtlpExporter(o =>
+            {
+                o.Endpoint = new Uri(otlpEndpoint);
+                o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+            });
         });
-        
+
         builder.Services.AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService("pulse"))
+            .ConfigureResource(r => r.AddService(serviceName))
             .WithTracing(t => t
-                    .AddAspNetCoreInstrumentation(o => o.RecordException = true)
-                    .AddHttpClientInstrumentation()
-                    .AddNpgsql()
-                    .AddConsoleExporter()
+                .AddAspNetCoreInstrumentation(o => o.RecordException = true)
+                .AddHttpClientInstrumentation()
+                .AddNpgsql()
+                .AddOtlpExporter(o =>
+                {
+                    o.Endpoint = new Uri(otlpEndpoint);
+                    o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                })
             )
             .WithMetrics(m => m
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddConsoleExporter());
-        
-        // builder.Services.AddOpenTelemetry()
-        //     .ConfigureResource(res => res.AddService(
-        //         serviceName: "taskpulse-api",
-        //         serviceVersion: "1.0.0",
-        //         serviceInstanceId: Environment.MachineName))
-        //     .WithTracing(tracer =>
-        //     {
-        //         tracer
-        //             .AddAspNetCoreInstrumentation(o =>
-        //             {
-        //                 o.RecordException = true;
-        //                 o.Filter = ctx => true; // можно фильтровать ненужные запросы
-        //             })
-        //             .AddHttpClientInstrumentation()
-        //             .AddNpgsql() // трассировка Npgsql (команды БД как спаны)
-        //             // Экспортер спанов в консоль (читабельный):
-        //             .AddConsoleExporter();
-        //         // .AddOtlpExporter() // опц.: в OTLP-коллектор (Jaeger/Tempo/OTel-Collector)
-        //     })
-        //     .WithMetrics(meter =>
-        //     {
-        //         meter
-        //             .AddAspNetCoreInstrumentation()
-        //             .AddHttpClientInstrumentation()
-        //             .AddRuntimeInstrumentation()
-        //             .AddProcessInstrumentation()
-        //             .AddConsoleExporter(); // метрики в консоль
-        //     });
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddOtlpExporter(o =>
+                {
+                    o.Endpoint = new Uri(otlpEndpoint);
+                    o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                }));
+
         return builder;
     }
 }
